@@ -9,11 +9,11 @@
 - ❌ "Provider is not valid"
 - ❌ "Models could not be fetched with the provided account details"
 
-这个代理服务让你可以在 Xcode 中正常使用智谱 GLM-4.5、Kimi 和 DeepSeek 模型。
+这个代理服务让你可以在 Xcode 中正常使用智谱 GLM-4.6、Kimi 和 DeepSeek 模型。
 
 ## 使用方法
 
-⚠️⚠️⚠️确保你已安装 Python 3.8+⚠️⚠️⚠️
+⚠️⚠️⚠️确保你已安装 Python 3.12 + ⚠️⚠️⚠️
 
 #### 1. 配置 API 密钥
 
@@ -32,37 +32,43 @@ DEEPSEEK_API_KEY=你的DeepSeek API密钥
 
 #### 2. 启动服务
 
-**使用启动脚本（推荐）:**
+
+**依赖安装:**
 
 ```bash
-./start_python.sh
+uv venv
+
+source .venv/bin/activate
+
+uv sync
+
 ```
 
-**手动启动:**
+**启动:**
 
 ```bash
-pip3 install -r requirements.txt
-python3 server_python.py
+python3 server.py
+
 ```
 
-服务启动在 `http://localhost:3000`
+服务启动在 `http://localhost:8899`
 
 ### 3. 配置 Xcode
 
 #### 3.1 在 Internet Hosted 中添加 AI 提供商：
 
-- **Base URL**: `http://localhost:3000`
+- **Base URL**: `http://localhost:8899`
 - **API Key**: `any-string-works` (任意字符串)
 
 #### 3.2 在 Locally Hosted 中添加 端口：
 
-- **端口**: `3000`
+- **端口**: `8899`
 
-现在可以在 Xcode 中正常使用智谱 GLM-4.5、Kimi 和 DeepSeek 模型了！
+现在可以在 Xcode 中正常使用智谱 GLM-4.6、Kimi 和 DeepSeek 模型了！
 
 ## 支持的模型
 
-- `glm-4.5` - 智谱 AI GLM-4.5
+- `glm-4.6` - 智谱 AI GLM-4.6
 - `kimi-k2-0905-preview` - Kimi K2
 - `deepseek-reasoner` - DeepSeek Reasoner (思维模式)
 - `deepseek-chat` - DeepSeek Chat (对话模式)
@@ -70,13 +76,13 @@ python3 server_python.py
 ## 常见问题
 
 **Q: 服务启动失败？**
-A: 检查是否正确设置了 API 密钥，确保 3000 端口未被占用
+A: 检查是否正确设置了 API 密钥，确保 8899 端口未被占用
 
 **Q: Xcode 还是连不上？**
-A: 确认服务正在运行，Base URL 填写正确：`http://localhost:3000`或端口填写正确：`3000`
+A: 确认服务正在运行，Base URL 填写正确：`http://localhost:8899`或端口填写正确：`8899`
 
 **Q: Python 版本需要什么依赖？**
-A: 需要 Python 3.8+，依赖已列在 requirements.txt 中
+A: 需要 Python 3.10+，依赖已列在 pyproject.toml 中,需要 python 包管理工具 uv
 
 ## 致谢：
 

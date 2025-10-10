@@ -1,6 +1,6 @@
 """
 Xcode AI Proxy - Python 版本
-使用 FastAPI 重写的 AI 代理服务，支持智谱 GLM-4.5、Kimi 和 DeepSeek 模型
+使用 FastAPI 重写的 AI 代理服务，支持智谱 GLM-4.6、Kimi 和 DeepSeek 模型
 根据环境变量动态加载可用模型
 """
 
@@ -26,27 +26,25 @@ load_dotenv()
 # 配置日志
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger(__name__)
 
 # 服务器配置
-PORT = int(os.getenv('PORT', 3000))
-HOST = os.getenv('HOST', '0.0.0.0')
+PORT = int(os.getenv("PORT", 3000))
+HOST = os.getenv("HOST", "0.0.0.0")
 
 # 重试配置
-MAX_RETRIES = int(os.getenv('MAX_RETRIES', 3))
-RETRY_DELAY = int(os.getenv('RETRY_DELAY', 1000)) / 1000  # 转换为秒
-REQUEST_TIMEOUT = int(os.getenv('REQUEST_TIMEOUT', 60000)) / 1000  # 转换为秒
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", 3))
+RETRY_DELAY = int(os.getenv("RETRY_DELAY", 1000)) / 1000  # 转换为秒
+REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", 60000)) / 1000  # 转换为秒
 
 # 检查必需的环境变量
 REQUIRED_ENV_VARS = {
-    'ZHIPU_API_KEY': 'GLM-4.5 模型',
-    'KIMI_API_KEY': 'Kimi 模型',
-    'DEEPSEEK_API_KEY': 'DeepSeek 模型'
+    "ZHIPU_API_KEY": "GLM-4.6 模型",
+    "KIMI_API_KEY": "Kimi 模型",
+    "DEEPSEEK_API_KEY": "DeepSeek 模型",
 }
 
 # 检查所有环境变量，但只给出警告而不退出
@@ -58,39 +56,41 @@ for env_var, model_name in REQUIRED_ENV_VARS.items():
 API_CONFIGS = {}
 
 # 如果有智谱 API 密钥，则添加智谱模型配置
-if os.getenv('ZHIPU_API_KEY'):
-    API_CONFIGS['glm-4.5'] = {
-        'api_url': 'https://open.bigmodel.cn/api/paas/v4',
-        'api_key': os.getenv('ZHIPU_API_KEY'),
-        'type': 'zhipu',
-        'name': 'GLM-4.5'
+if os.getenv("ZHIPU_API_KEY"):
+    API_CONFIGS["glm-4.6"] = {
+        "api_url": "https://open.bigmodel.cn/api/paas/v4",
+        "api_key": os.getenv("ZHIPU_API_KEY"),
+        "type": "zhipu",
+        "name": "GLM-4.6",
     }
 
 # 如果有 Kimi API 密钥，则添加 Kimi 模型配置
-if os.getenv('KIMI_API_KEY'):
-    API_CONFIGS['kimi-k2-0905-preview'] = {
-        'api_url': 'https://api.moonshot.cn/v1',
-        'api_key': os.getenv('KIMI_API_KEY'),
-        'type': 'kimi',
-        'name': 'Kimi K2'
+if os.getenv("KIMI_API_KEY"):
+    API_CONFIGS["kimi-k2-0905-preview"] = {
+        "api_url": "https://api.moonshot.cn/v1",
+        "api_key": os.getenv("KIMI_API_KEY"),
+        "type": "kimi",
+        "name": "Kimi K2",
     }
 
 # 如果有 DeepSeek API 密钥，则添加 DeepSeek 模型配置
-if os.getenv('DEEPSEEK_API_KEY'):
-    API_CONFIGS.update({
-        'deepseek-reasoner': {
-            'api_url': 'https://api.deepseek.com/v1',
-            'api_key': os.getenv('DEEPSEEK_API_KEY'),
-            'type': 'deepseek',
-            'name': 'DeepSeek Reasoner'
-        },
-        'deepseek-chat': {
-            'api_url': 'https://api.deepseek.com/v1',
-            'api_key': os.getenv('DEEPSEEK_API_KEY'),
-            'type': 'deepseek',
-            'name': 'DeepSeek Chat'
+if os.getenv("DEEPSEEK_API_KEY"):
+    API_CONFIGS.update(
+        {
+            "deepseek-reasoner": {
+                "api_url": "https://api.deepseek.com",
+                "api_key": os.getenv("DEEPSEEK_API_KEY"),
+                "type": "deepseek",
+                "name": "DeepSeek Reasoner",
+            },
+            "deepseek-chat": {
+                "api_url": "https://api.deepseek.com",
+                "api_key": os.getenv("DEEPSEEK_API_KEY"),
+                "type": "deepseek",
+                "name": "DeepSeek Chat",
+            },
         }
-    })
+    )
 
 if not API_CONFIGS:
     logger.error("❌ 未配置任何模型API密钥，请至少设置一个环境变量:")
@@ -99,15 +99,15 @@ if not API_CONFIGS:
     logger.error("请设置相应的环境变量后重新启动服务")
     sys.exit(1)
 
-logger.info('📋 已加载模型配置:')
+logger.info("📋 已加载模型配置:")
 for model_id, config in API_CONFIGS.items():
     logger.info(f"   ✅ {model_id} ({config['name']}) - 已配置")
 
 # FastAPI 应用初始化
 app = FastAPI(
     title="Xcode AI Proxy",
-    description="AI 代理服务，支持智谱 GLM-4.5、Kimi 和 DeepSeek 模型",
-    version="1.0.0"
+    description="AI 代理服务，支持智谱 GLM-4.6、Kimi 和 DeepSeek 模型",
+    version="1.0.0",
 )
 
 # 添加 CORS 中间件
@@ -119,6 +119,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # 请求模型
 class ChatCompletionRequest(BaseModel):
     model: str
@@ -127,6 +128,7 @@ class ChatCompletionRequest(BaseModel):
     temperature: Optional[float] = None
     max_tokens: Optional[int] = None
     top_p: Optional[float] = None
+
 
 # 通用重试装饰器
 async def with_retry(operation, max_retries=MAX_RETRIES, base_delay=RETRY_DELAY):
@@ -149,6 +151,7 @@ async def with_retry(operation, max_retries=MAX_RETRIES, base_delay=RETRY_DELAY)
     logger.error(f"❌ 所有{max_retries}次重试都失败了")
     raise last_error
 
+
 # 中间件：请求日志
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -166,14 +169,13 @@ async def log_requests(request: Request, call_next):
 
     return response
 
+
 # 健康检查
 @app.get("/health")
 async def health_check():
     """健康检查接口"""
-    return {
-        "status": "ok",
-        "timestamp": datetime.now().isoformat()
-    }
+    return {"status": "ok", "timestamp": datetime.now().isoformat()}
+
 
 # 调试端点
 @app.get("/debug/config")
@@ -186,17 +188,18 @@ async def debug_config():
                 "name": config["name"],
                 "type": config["type"],
                 "api_url": config["api_url"],
-                "has_api_key": bool(config.get("api_key"))
+                "has_api_key": bool(config.get("api_key")),
             }
             for model_id, config in API_CONFIGS.items()
-        }
+        },
     }
+
 
 # 模型列表
 @app.get("/v1/models")
 async def list_models():
     """返回支持的模型列表"""
-    logger.info('📋 返回模型列表')
+    logger.info("📋 返回模型列表")
 
     model_list = [
         {
@@ -204,68 +207,65 @@ async def list_models():
             "object": "model",
             "created": 1677610602,
             "owned_by": config["type"],
-            "name": config.get("name", model_id)
+            "name": config.get("name", model_id),
         }
         for model_id, config in API_CONFIGS.items()
     ]
 
-    return {
-        "object": "list",
-        "data": model_list
-    }
+    return {"object": "list", "data": model_list}
+
 
 # 智谱 API 处理
 async def handle_zhipu_request(request_body: dict) -> Union[dict, StreamingResponse]:
     """处理智谱 API 请求"""
-    logger.info('📡 路由到智谱API')
+    logger.info("📡 路由到智谱API")
 
     async def make_request():
-        config = API_CONFIGS['glm-4.5']
+        config = API_CONFIGS["glm-4.6"]
 
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
             response = await client.post(
                 f"{config['api_url']}/chat/completions",
-                json={**request_body, "model": "glm-4.5"},
+                json={**request_body, "model": "glm-4.6"},
                 headers={
                     "Authorization": f"Bearer {config['api_key']}",
-                    "Content-Type": "application/json"
-                }
+                    "Content-Type": "application/json",
+                },
             )
             response.raise_for_status()
             return response
 
     response = await with_retry(make_request)
-    logger.info(f'✅ 智谱API响应状态: {response.status_code}')
+    logger.info(f"✅ 智谱API响应状态: {response.status_code}")
 
-    if request_body.get('stream', False):
-        logger.info('🔄 返回智谱流式响应')
+    if request_body.get("stream", False):
+        logger.info("🔄 返回智谱流式响应")
 
         # 直接返回原始流式响应，不修改任何内容
         response_headers = dict(response.headers)
         # 移除可能引起问题的头部
-        response_headers.pop('content-length', None)
-        response_headers.pop('content-encoding', None)
+        response_headers.pop("content-length", None)
+        response_headers.pop("content-encoding", None)
 
         async def generate():
             async for chunk in response.aiter_bytes(chunk_size=8192):
                 yield chunk
 
         return StreamingResponse(
-            generate(),
-            status_code=response.status_code,
-            headers=response_headers
+            generate(), status_code=response.status_code, headers=response_headers
         )
     else:
-        logger.info('📦 返回智谱非流式响应')
+        logger.info("📦 返回智谱非流式响应")
         return response.json()
+
 
 # Kimi API 处理
 async def handle_kimi_request(request_body: dict) -> Union[dict, StreamingResponse]:
     """处理 Kimi API 请求"""
-    logger.info('📡 路由到Kimi API')
+    logger.info("📡 路由到Kimi API")
 
     async def make_request():
-        config = API_CONFIGS['kimi-k2-0905-preview']
+        config = API_CONFIGS["kimi-k2-0905-preview"]
 
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
             response = await client.post(
@@ -273,75 +273,130 @@ async def handle_kimi_request(request_body: dict) -> Union[dict, StreamingRespon
                 json={**request_body, "model": "kimi-k2-0905-preview"},
                 headers={
                     "Authorization": f"Bearer {config['api_key']}",
-                    "Content-Type": "application/json"
-                }
+                    "Content-Type": "application/json",
+                },
             )
             response.raise_for_status()
             return response
 
     response = await with_retry(make_request)
-    logger.info(f'✅ Kimi API响应状态: {response.status_code}')
+    logger.info(f"✅ Kimi API响应状态: {response.status_code}")
 
-    if request_body.get('stream', False):
-        logger.info('🔄 返回Kimi流式响应')
+    if request_body.get("stream", False):
+        logger.info("🔄 返回Kimi流式响应")
 
         # 直接返回原始流式响应，不修改任何内容
         response_headers = dict(response.headers)
         # 移除可能引起问题的头部
-        response_headers.pop('content-length', None)
-        response_headers.pop('content-encoding', None)
+        response_headers.pop("content-length", None)
+        response_headers.pop("content-encoding", None)
 
         async def generate():
             async for chunk in response.aiter_bytes(chunk_size=8192):
                 yield chunk
 
         return StreamingResponse(
-            generate(),
-            status_code=response.status_code,
-            headers=response_headers
+            generate(), status_code=response.status_code, headers=response_headers
         )
     else:
-        logger.info('📦 返回Kimi非流式响应')
+        logger.info("📦 返回Kimi非流式响应")
         return response.json()
+
+
+# 新增：清洗 messages，确保每条 message['content'] 为字符串
+def sanitize_messages(messages):
+    """
+    确保 messages 是 list，每个 message 为 dict 且 message['content'] 为字符串。
+    - 如果 message 是字符串 -> 转为 {'role':'user','content': str}
+    - 如果 content 是 list -> 将元素 join（非字符串元素 json.dumps）
+    - 其他非字符串 -> json.dumps
+    """
+    import json
+
+    if not isinstance(messages, list):
+        logger.warning("messages 不是列表，已尝试转换为单项列表")
+        return [{"role": "user", "content": str(messages)}]
+
+    sanitized = []
+    for idx, m in enumerate(messages):
+        # 字符串形式的 message，视为 user
+        if isinstance(m, str):
+            sanitized.append({"role": "user", "content": m})
+            continue
+
+        if not isinstance(m, dict):
+            # 无法识别的类型，序列化为字符串
+            sanitized.append(
+                {"role": "user", "content": json.dumps(m, ensure_ascii=False)}
+            )
+            continue
+
+        content = m.get("content", "")
+        if isinstance(content, str):
+            s = content
+        elif isinstance(content, list):
+            parts = []
+            for part in content:
+                if isinstance(part, str):
+                    parts.append(part)
+                else:
+                    parts.append(json.dumps(part, ensure_ascii=False))
+            s = "\n".join(parts)
+        else:
+            s = json.dumps(content, ensure_ascii=False)
+
+        new_m = {**m, "content": s}
+        sanitized.append(new_m)
+
+    return sanitized
+
 
 # DeepSeek API 处理
 async def handle_deepseek_request(request_body: dict) -> Union[dict, StreamingResponse]:
     """处理 DeepSeek API 请求"""
-    logger.info('📡 路由到DeepSeek API')
-
-    model = request_body.get('model', 'deepseek-reasoner')
-    logger.info(f'🔍 使用 DeepSeek 模型: {model}')
+    logger.info("📡 路由到DeepSeek API")
+    
+    request_body['messages'] = sanitize_messages(request_body['messages'])
+    logger.info('🧹 在 handle_proxy 中已清洗 messages')
+    
+    model = request_body.get("model", "deepseek-reasoner")
+    logger.info(f"🔍 使用 DeepSeek 模型: {model}")
 
     async def make_request():
         config = API_CONFIGS[model]
 
         # 过滤 DeepSeek API 支持的参数
         supported_params = {
-            'model', 'messages', 'stream', 'temperature',
-            'max_tokens', 'top_p', 'frequency_penalty',
-            'presence_penalty', 'stop'
+            "model",
+            "messages",
+            "stream",
+            "temperature",
+            "max_tokens",
+            "top_p",
+            "frequency_penalty",
+            "presence_penalty",
+            "stop",
         }
 
         # 构建清理后的请求数据
         request_data = {
-            key: value for key, value in request_body.items()
-            if key in supported_params
+            key: value for key, value in request_body.items() if key in supported_params
         }
 
         # 确保模型名称正确
-        request_data['model'] = model
+        request_data["model"] = model
 
         # 移除空的数组参数
-        if 'tools' in request_body and not request_body['tools']:
-            logger.info('🧹 移除空的 tools 参数')
+        if "tools" in request_body and not request_body["tools"]:
+            logger.info("🧹 移除空的 tools 参数")
 
         # 记录过滤的参数
         filtered_params = set(request_body.keys()) - set(request_data.keys())
         if filtered_params:
-            logger.info(f'🧹 已过滤不支持的参数: {filtered_params}')
+            logger.info(f"🧹 已过滤不支持的参数: {filtered_params}")
 
         logger.info(f'📤 发送到 DeepSeek API: {config["api_url"]}/chat/completions')
-        logger.info(f'📋 请求参数: {list(request_data.keys())}')
+        logger.info(f"📋 请求参数: {list(request_data.keys())}")
 
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
             response = await client.post(
@@ -349,48 +404,48 @@ async def handle_deepseek_request(request_body: dict) -> Union[dict, StreamingRe
                 json=request_data,
                 headers={
                     "Authorization": f"Bearer {config['api_key']}",
-                    "Content-Type": "application/json"
-                }
+                    "Content-Type": "application/json",
+                },
             )
 
             # 记录响应状态和错误信息
-            logger.info(f'📥 DeepSeek API 响应状态: {response.status_code}')
+            logger.info(f"📥 DeepSeek API 响应状态: {response.status_code}")
             if response.status_code != 200:
                 response_text = response.text
-                logger.error(f'❌ DeepSeek API 错误响应: {response_text}')
+                logger.error(f"❌ DeepSeek API 错误响应: {response_text}")
 
             response.raise_for_status()
             return response
 
     response = await with_retry(make_request)
-    logger.info(f'✅ DeepSeek API响应状态: {response.status_code}')
+    logger.info(f"✅ DeepSeek API响应状态: {response.status_code}")
 
-    if request_body.get('stream', False):
-        logger.info('🔄 返回DeepSeek流式响应')
+    if request_body.get("stream", False):
+        logger.info("🔄 返回DeepSeek流式响应")
 
         # 直接返回原始流式响应，不修改任何内容
         response_headers = dict(response.headers)
         # 移除可能引起问题的头部
-        response_headers.pop('content-length', None)
-        response_headers.pop('content-encoding', None)
+        response_headers.pop("content-length", None)
+        response_headers.pop("content-encoding", None)
 
         async def generate():
             async for chunk in response.aiter_bytes(chunk_size=8192):
                 yield chunk
 
         return StreamingResponse(
-            generate(),
-            status_code=response.status_code,
-            headers=response_headers
+            generate(), status_code=response.status_code, headers=response_headers
         )
     else:
-        logger.info('📦 返回DeepSeek非流式响应')
-        return response.json()# 代理处理函数
+        logger.info("📦 返回DeepSeek非流式响应")
+        return response.json()  # 代理处理函数
+
+
 async def handle_proxy(request_data: dict):
     """处理代理请求"""
     try:
-        model = request_data.get('model')
-        logger.info(f'🎯 请求模型: {model}')
+        model = request_data.get("model")
+        logger.info(f"🎯 请求模型: {model}")
         logger.info(f'🔍 是否流式: {request_data.get("stream", False)}')
 
         if not model or model not in API_CONFIGS:
@@ -399,18 +454,18 @@ async def handle_proxy(request_data: dict):
                 detail={
                     "error": {
                         "message": f"不支持的模型: {model}。支持的模型: {', '.join(API_CONFIGS.keys())}",
-                        "type": "invalid_request_error"
+                        "type": "invalid_request_error",
                     }
-                }
+                },
             )
 
         config = API_CONFIGS[model]
 
-        if config['type'] == 'zhipu':
+        if config["type"] == "zhipu":
             return await handle_zhipu_request(request_data)
-        elif config['type'] == 'kimi':
+        elif config["type"] == "kimi":
             return await handle_kimi_request(request_data)
-        elif config['type'] == 'deepseek':
+        elif config["type"] == "deepseek":
             return await handle_deepseek_request(request_data)
         else:
             raise HTTPException(
@@ -418,46 +473,44 @@ async def handle_proxy(request_data: dict):
                 detail={
                     "error": {
                         "message": f"未知的模型类型: {config['type']}",
-                        "type": "internal_error"
+                        "type": "internal_error",
                     }
-                }
+                },
             )
 
     except HTTPException:
         raise
     except httpx.HTTPStatusError as error:
-        logger.error(f'❌ HTTP 状态错误: {error.response.status_code} - {error.response.text}')
+        logger.error(
+            f"❌ HTTP 状态错误: {error.response.status_code} - {error.response.text}"
+        )
         raise HTTPException(
             status_code=error.response.status_code,
             detail={
                 "error": {
                     "message": f"API 请求失败: {error.response.status_code} - {error.response.text}",
-                    "type": "api_error"
+                    "type": "api_error",
                 }
-            }
+            },
         )
     except httpx.RequestError as error:
-        logger.error(f'❌ 请求错误: {str(error)}')
+        logger.error(f"❌ 请求错误: {str(error)}")
         raise HTTPException(
             status_code=500,
             detail={
                 "error": {
                     "message": f"网络请求失败: {str(error)}",
-                    "type": "network_error"
+                    "type": "network_error",
                 }
-            }
+            },
         )
     except Exception as error:
-        logger.error(f'❌ 代理请求失败: {str(error)}')
+        logger.error(f"❌ 代理请求失败: {str(error)}")
         raise HTTPException(
             status_code=500,
-            detail={
-                "error": {
-                    "message": str(error),
-                    "type": "proxy_error"
-                }
-            }
+            detail={"error": {"message": str(error), "type": "proxy_error"}},
         )
+
 
 # Chat Completions 接口
 @app.post("/v1/chat/completions")
@@ -468,28 +521,28 @@ async def chat_completions(request: Request):
         logger.info(f"请求体: {body}")
 
         # 验证必需字段
-        if 'model' not in body:
+        if "model" not in body:
             logger.error("请求体缺少 'model' 字段")
             raise HTTPException(
                 status_code=400,
                 detail={
                     "error": {
                         "message": "Missing required field: 'model'",
-                        "type": "invalid_request_error"
+                        "type": "invalid_request_error",
                     }
-                }
+                },
             )
 
-        if 'messages' not in body:
+        if "messages" not in body:
             logger.error("请求体缺少 'messages' 字段")
             raise HTTPException(
                 status_code=400,
                 detail={
                     "error": {
                         "message": "Missing required field: 'messages'",
-                        "type": "invalid_request_error"
+                        "type": "invalid_request_error",
                     }
-                }
+                },
             )
 
         return await handle_proxy(body)
@@ -502,10 +555,11 @@ async def chat_completions(request: Request):
             detail={
                 "error": {
                     "message": f"Invalid request body: {str(e)}",
-                    "type": "invalid_request_error"
+                    "type": "invalid_request_error",
                 }
-            }
+            },
         )
+
 
 @app.post("/api/v1/chat/completions")
 async def api_chat_completions(request: Request):
@@ -523,10 +577,11 @@ async def api_chat_completions(request: Request):
             detail={
                 "error": {
                     "message": f"Invalid request body: {str(e)}",
-                    "type": "invalid_request_error"
+                    "type": "invalid_request_error",
                 }
-            }
+            },
         )
+
 
 @app.post("/v1/messages")
 async def messages(request: Request):
@@ -544,41 +599,39 @@ async def messages(request: Request):
             detail={
                 "error": {
                     "message": f"Invalid request body: {str(e)}",
-                    "type": "invalid_request_error"
+                    "type": "invalid_request_error",
                 }
-            }
+            },
         )
+
 
 # 启动函数
 def main():
     """启动服务器"""
-    logger.info('🚀 Xcode AI 代理服务已启动')
-    logger.info(f'📡 监听地址: http://{HOST}:{PORT}')
-    logger.info('🎯 当前可用的模型:')
+    logger.info("🚀 Xcode AI 代理服务已启动")
+    logger.info(f"📡 监听地址: http://{HOST}:{PORT}")
+    logger.info("🎯 当前可用的模型:")
     for model, config in API_CONFIGS.items():
         logger.info(f"   ✅ {model} ({config.get('name', config['type'])})")
 
     if not API_CONFIGS:
-        logger.error('❌ 没有可用的模型，请检查环境变量配置')
+        logger.error("❌ 没有可用的模型，请检查环境变量配置")
         return
 
-    logger.info('⚙️ 重试配置:')
-    logger.info(f'   最大重试次数: {MAX_RETRIES}')
-    logger.info(f'   重试延迟: {int(RETRY_DELAY * 1000)}ms (递增)')
-    logger.info(f'   请求超时: {int(REQUEST_TIMEOUT * 1000)}ms')
+    logger.info("⚙️ 重试配置:")
+    logger.info(f"   最大重试次数: {MAX_RETRIES}")
+    logger.info(f"   重试延迟: {int(RETRY_DELAY * 1000)}ms (递增)")
+    logger.info(f"   请求超时: {int(REQUEST_TIMEOUT * 1000)}ms")
 
-    logger.info('📋 配置 Xcode:')
-    logger.info(f'   ANTHROPIC_BASE_URL: http://localhost:{PORT}')
-    logger.info('   ANTHROPIC_AUTH_TOKEN: any-string-works')
-    logger.info('🔧 功能: 智谱/Kimi/DeepSeek代理，流式响应，动态配置，智能重试')
+    logger.info("📋 配置 Xcode:")
+    logger.info(f"   ANTHROPIC_BASE_URL: http://localhost:{PORT}")
+    logger.info("   ANTHROPIC_AUTH_TOKEN: any-string-works")
+    logger.info("🔧 功能: 智谱/Kimi/DeepSeek代理，流式响应，动态配置，智能重试")
 
     uvicorn.run(
-        "server_python:app",
-        host=HOST,
-        port=PORT,
-        reload=False,
-        log_level="info"
+        "server:app", host=HOST, port=PORT, reload=False, log_level="info"
     )
+
 
 if __name__ == "__main__":
     main()
