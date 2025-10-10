@@ -1,6 +1,6 @@
 """
 Xcode AI Proxy - Python 版本
-使用 FastAPI 重写的 AI 代理服务，支持智谱 GLM-4.5、Kimi 和 DeepSeek 模型
+使用 FastAPI 重写的 AI 代理服务，支持智谱 GLM-4.6、Kimi 和 DeepSeek 模型
 根据环境变量动态加载可用模型
 """
 
@@ -42,7 +42,7 @@ REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", 60000)) / 1000  # 转换为�
 
 # 检查必需的环境变量
 REQUIRED_ENV_VARS = {
-    "ZHIPU_API_KEY": "GLM-4.5 模型",
+    "ZHIPU_API_KEY": "GLM-4.6 模型",
     "KIMI_API_KEY": "Kimi 模型",
     "DEEPSEEK_API_KEY": "DeepSeek 模型",
 }
@@ -57,11 +57,11 @@ API_CONFIGS = {}
 
 # 如果有智谱 API 密钥，则添加智谱模型配置
 if os.getenv("ZHIPU_API_KEY"):
-    API_CONFIGS["glm-4.5"] = {
+    API_CONFIGS["glm-4.6"] = {
         "api_url": "https://open.bigmodel.cn/api/paas/v4",
         "api_key": os.getenv("ZHIPU_API_KEY"),
         "type": "zhipu",
-        "name": "GLM-4.5",
+        "name": "GLM-4.6",
     }
 
 # 如果有 Kimi API 密钥，则添加 Kimi 模型配置
@@ -78,13 +78,13 @@ if os.getenv("DEEPSEEK_API_KEY"):
     API_CONFIGS.update(
         {
             "deepseek-reasoner": {
-                "api_url": "https://api.deepseek.com/v1",
+                "api_url": "https://api.deepseek.com",
                 "api_key": os.getenv("DEEPSEEK_API_KEY"),
                 "type": "deepseek",
                 "name": "DeepSeek Reasoner",
             },
             "deepseek-chat": {
-                "api_url": "https://api.deepseek.com/v1",
+                "api_url": "https://api.deepseek.com",
                 "api_key": os.getenv("DEEPSEEK_API_KEY"),
                 "type": "deepseek",
                 "name": "DeepSeek Chat",
@@ -106,7 +106,7 @@ for model_id, config in API_CONFIGS.items():
 # FastAPI 应用初始化
 app = FastAPI(
     title="Xcode AI Proxy",
-    description="AI 代理服务，支持智谱 GLM-4.5、Kimi 和 DeepSeek 模型",
+    description="AI 代理服务，支持智谱 GLM-4.6、Kimi 和 DeepSeek 模型",
     version="1.0.0",
 )
 
@@ -221,12 +221,12 @@ async def handle_zhipu_request(request_body: dict) -> Union[dict, StreamingRespo
     logger.info("📡 路由到智谱API")
 
     async def make_request():
-        config = API_CONFIGS["glm-4.5"]
+        config = API_CONFIGS["glm-4.6"]
 
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
             response = await client.post(
                 f"{config['api_url']}/chat/completions",
-                json={**request_body, "model": "glm-4.5"},
+                json={**request_body, "model": "glm-4.6"},
                 headers={
                     "Authorization": f"Bearer {config['api_key']}",
                     "Content-Type": "application/json",
