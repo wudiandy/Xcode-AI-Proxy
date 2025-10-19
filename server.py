@@ -8,6 +8,8 @@ import os
 import sys
 import asyncio
 import logging
+import time
+import uuid
 from datetime import datetime
 from typing import Dict, Any, Optional, Union
 import json
@@ -357,6 +359,71 @@ def sanitize_messages(messages):
     return sanitized
 
 
+async def parse_sse_stream(resp: httpx.Response) -> str:
+    """解析 response 的 SSE 流，并且把解析的结果暂时存到本地字符串中"""
+    buffer = ""
+    fragments = []
+
+    async for chunk in resp.aiter_text(chunk_size=8192):
+        buffer += chunk
+
+        while "\n\n" in buffer:
+            event, buffer = buffer.split("\n\n", 1)
+            if not event.strip():
+                continue
+
+            for line in event.splitlines():
+                if not line.startswith("data:"):
+                    continue
+
+                data = line[5:].strip()
+                if not data:
+                    continue
+                if data == "[DONE]":
+                    return "".join(fragments)
+
+                try:
+                    payload = json.loads(data)
+                except json.JSONDecodeError:
+                    fragments.append(data)
+                    continue
+
+                if isinstance(payload, dict):
+                    choices = payload.get("choices") or []
+                    for choice in choices:
+                        delta = choice.get("delta") or {}
+                        message = choice.get("message") or {}
+                        for block in (delta, message):
+                            content_piece = block.get("content")
+                            if content_piece:
+                                fragments.append(content_piece)
+
+                    if not choices and payload.get("content"):
+                        content_value = payload["content"]
+                        if isinstance(content_value, str):
+                            fragments.append(content_value)
+                        else:
+                            fragments.append(json.dumps(content_value, ensure_ascii=False))
+                else:
+                    fragments.append(str(payload))
+
+    return "".join(fragments)
+
+
+def process_parsed_stream_cache(parsed_stream_cache: str) -> str:
+    """对 parsed_stream_cache 进行处理"""
+    try:
+        payload = json.loads(parsed_stream_cache)
+    except json.JSONDecodeError:
+        return parsed_stream_cache
+
+    try:
+        json.loads(payload.get("text", ""))
+        return process_parsed_stream_cache(payload.get("text", ""))
+    except (json.JSONDecodeError, AttributeError):
+        return payload.get("text", "")
+
+
 # DeepSeek API 处理
 async def handle_deepseek_request(request_body: dict) -> Union[dict, StreamingResponse]:
     """处理 DeepSeek API 请求"""
@@ -435,11 +502,64 @@ async def handle_deepseek_request(request_body: dict) -> Union[dict, StreamingRe
         # 移除可能引起问题的头部
         response_headers.pop("content-length", None)
         response_headers.pop("content-encoding", None)
+        response_headers["content-type"] = "text/event-stream; charset=utf-8"
+
+        # 解析 response 的 SSE 流，并且把解析的结果暂时存到本地字符串中
+        parsed_stream_cache = await parse_sse_stream(response)
+        logger.info(f"🧩 DeepSeek流式缓存解析结果: {parsed_stream_cache!r}")
+
+        # 对 parsed_stream_cache 进行处理。
+        parsed_stream_cache = process_parsed_stream_cache(parsed_stream_cache)
+        logger.info(f"🧩 DeepSeek流式缓存处理后结果: {parsed_stream_cache!r}")
 
         async def generate():
-            async for chunk in response.aiter_bytes(chunk_size=8192):
-                # logger.info(f"🧩 DeepSeek流式数据块: {chunk!r}")  # 注意可能是字节串
-                yield chunk
+            # 将解析后的文本拆分为多个 SSE 块并逐个推送
+            chunk_size = 1024
+            text = parsed_stream_cache or ""
+            stream_id = str(uuid.uuid4())
+            system_fingerprint = "fp_proxy_stream"
+            for index, start in enumerate(range(0, len(text), chunk_size)):
+                segment = text[start : start + chunk_size]
+                payload = {
+                    "id": stream_id,
+                    "object": "chat.completion.chunk",
+                    "created": int(time.time()),
+                    "model": model,
+                    "system_fingerprint": system_fingerprint,
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {"content": segment},
+                            "logprobs": None,
+                            "finish_reason": None,
+                        }
+                    ],
+                }
+                sse_chunk = f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                logger.debug(f"🔀 发送SSE块(index={index}): {sse_chunk!r}")
+                yield sse_chunk.encode("utf-8")
+                await asyncio.sleep(0)
+
+            # 发送结束块，指示完成
+            finish_payload = {
+                "id": stream_id,
+                "object": "chat.completion.chunk",
+                "created": int(time.time()),
+                "model": model,
+                "system_fingerprint": system_fingerprint,
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {},
+                        "logprobs": None,
+                        "finish_reason": "stop",
+                    }
+                ],
+            }
+            finish_chunk = f"data: {json.dumps(finish_payload, ensure_ascii=False)}\n\n"
+            logger.debug(f"🏁 发送SSE结束块: {finish_chunk!r}")
+            yield finish_chunk.encode("utf-8")
+            yield b"data: [DONE]\n\n"
 
         return StreamingResponse(
             generate(), status_code=response.status_code, headers=response_headers
