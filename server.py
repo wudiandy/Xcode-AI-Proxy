@@ -149,7 +149,11 @@ async def with_retry(operation, max_retries=MAX_RETRIES, base_delay=RETRY_DELAY)
                 await asyncio.sleep(delay)
 
     logger.error(f"❌ 所有{max_retries}次重试都失败了")
-    raise last_error
+    # 如果没有捕获到具体异常，避免 raise None，提供一个明确的回退错误
+    if last_error:
+        raise last_error
+    else:
+        raise RuntimeError("Operation failed after retries with no exception captured")
 
 
 # 中间件：请求日志
@@ -232,6 +236,7 @@ async def handle_zhipu_request(request_body: dict) -> Union[dict, StreamingRespo
                     "Content-Type": "application/json",
                 },
             )
+            # 非 2xx 状态会触发 raise_for_status() 抛出 HTTPStatusError
             response.raise_for_status()
             return response
 
@@ -276,6 +281,7 @@ async def handle_kimi_request(request_body: dict) -> Union[dict, StreamingRespon
                     "Content-Type": "application/json",
                 },
             )
+            # 非 2xx 状态会触发 raise_for_status() 抛出 HTTPStatusError
             response.raise_for_status()
             return response
 
@@ -414,6 +420,7 @@ async def handle_deepseek_request(request_body: dict) -> Union[dict, StreamingRe
                 response_text = response.text
                 logger.error(f"❌ DeepSeek API 错误响应: {response_text}")
 
+            # 非 2xx 状态会触发 raise_for_status() 抛出 HTTPStatusError
             response.raise_for_status()
             return response
 
@@ -431,6 +438,7 @@ async def handle_deepseek_request(request_body: dict) -> Union[dict, StreamingRe
 
         async def generate():
             async for chunk in response.aiter_bytes(chunk_size=8192):
+                # logger.info(f"🧩 DeepSeek流式数据块: {chunk!r}")  # 注意可能是字节串
                 yield chunk
 
         return StreamingResponse(
